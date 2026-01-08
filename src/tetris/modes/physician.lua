@@ -95,7 +95,7 @@ local Physician = GameMode:extend()
 
 local BagRandomizer = require 'tetris.randomizers.bag'
 
-Physician.name = "?????"
+Physician.name = "Physician"
 Physician.hash = "Physician"
 Physician.tagline = "sample text"
 Physician.ruleset_override = true
@@ -111,20 +111,52 @@ function Physician:new()
     Physician.super:new()
 	self._ruleset = PhysicianRuleset()
 	
+	self.level = 10
+	
     self.grid = PhysicianGrid(8, 16+4)
 	self.classic_lock = true
 	self.enable_hard_drop = false
+	
+	self.gems = 0
+	
+	local max_gem_height
+	
+	if self.level >= 19 then
+	    max_gem_height = 13
+	elseif self.level >= 17 then
+		max_gem_height = 12
+	elseif self.level >= 15 then
+		max_gem_height = 11
+	else
+		max_gem_height = 10
+	end
+	
+	self.mapgen_remain = math.min((self.level + 1) * 4, 8 * max_gem_height)
+	self.gen_positions = {}
+	
+	for x = 1, 8 do
+		for y = (20 - max_gem_height + 1), 20 do
+			table.insert(self.gen_positions, {x = x, y = y})
+		end
+	end
 
-	self.gTime = 0;
+	self.gTime = 0
 end
 
-function Physician:loadMap(mapNumber)
-	self.grid:clear()
+function Physician:generateMap()
+	local color = colors[self.mapgen_remain % 3] or colors[love.math.random(1, 3)]
+	
+	local r = love.math.random(1, #self.gen_positions)
+	local p = self.gen_positions[r]
+	self.gen_positions[r], self.gen_positions[#self.gen_positions] = self.gen_positions[#self.gen_positions], nil
+	
+	self.grid:setCell(p.x, p.y, {skin = "V", colour = color})
+	
+	self.mapgen_remain = self.mapgen_remain - 1
 end
 
 function Physician:getBackground()
-	--return self.stage-1
-	return 0
+	return self.level
 end
 
 function Physician:initialize(_)
@@ -161,6 +193,12 @@ end
 
 function Physician:advanceOneFrame(inputs, ruleset)
 	scene.ruleset = self._ruleset
+	
+	if self.mapgen_remain > 0 then
+		self:generateMap()
+		return true
+	end
+	
 	self.super.advanceOneFrame(self, inputs, self._ruleset)
 	if self.gTime > 0 then
 		self.gTime = self.gTime - 1
