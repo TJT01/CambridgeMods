@@ -196,6 +196,7 @@ local BagRandomizer = require 'tetris.randomizers.bag'
 Bombliss.name = "Bomb Contest TB [BETA]"
 Bombliss.hash = "Bombliss"
 Bombliss.tagline = "sample text"
+Bombliss.ruleset_override = true
 
 local explosionSizes = {
 	{x1 = -3, y1 = 0, x2 = 3, y2 = 0},
@@ -533,7 +534,7 @@ function Bombliss:loadMap(mapNumber)
 	self:findBigBombs(false)
 end
 
-function GameMode:getBackground()
+function Bombliss:getBackground()
 	return self.stage-1
 end
 
