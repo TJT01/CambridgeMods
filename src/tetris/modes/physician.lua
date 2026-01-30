@@ -115,7 +115,7 @@ function Physician:new()
 	Physician.super:new()
 	self._ruleset = PhysicianRuleset()
 	
-	self.level = 10
+	self.level = 6
 	
 	self.ready_frames = 0
 	
@@ -123,6 +123,12 @@ function Physician:new()
 	self.classic_lock = true
 	self.enable_hard_drop = false
 	
+	self.next_score = 100
+	
+	self:startGenerateMap()
+end
+
+function Physician:startGenerateMap()
 	self.gems = 0
 	
 	local max_gem_height
@@ -174,6 +180,7 @@ function Physician:generateMap()
 		for i = 1, 3 do
 			if valid[colors[colorIdx]] then
 				self.grid:setCell(p.x, p.y, {skin = "V", colour = colors[colorIdx]})
+				self.gems = self.gems + 1
 				break
 			else
 				colorIdx = (colorIdx % 3) + 1
@@ -216,9 +223,16 @@ end
 function Physician:tryClear()
 	local chains = self.grid:findClearedChains()
 	if #chains ~= 0 then
-		self.grid:clearChains(chains)
+		local cleareds = self.grid:clearChains(chains)
+		self.gems = self.gems - cleareds
+		for i = 1, cleareds do
+			self.score = self.score + self.next_score
+			self.next_score = self.next_score * 2
+		end
 		self.gTime = 30
 		playSE("erase", "single")
+	else
+		self.next_score = 100
 	end
 end
 
@@ -245,6 +259,7 @@ function Physician:advanceOneFrame(inputs, ruleset)
 		self.prev_inputs = copy(inputs)
 		return false
 	end
+	
 	return true
 end
 
@@ -281,5 +296,16 @@ function Physician:drawNextQueue(ruleset)
 	return false
 end
 
+function Physician:drawCustom()
+	love.graphics.setColor(1, 1, 1, 1)
+	love.graphics.setFont(font_3x5_2)
+	love.graphics.printf("LEVEL", 208, 120, 80, "left")
+	love.graphics.printf("GEMS", 208, 200, 80, "left")
+	love.graphics.printf("SCORE", 208, 280, 80, "left")
+	love.graphics.setFont(font_3x5_3)
+	love.graphics.printf(self.level, 208, 140, 80, "left")
+	love.graphics.printf(self.gems, 208, 220, 80, "left")
+	love.graphics.printf(self.score, 208, 300, 120, "left")
+end
 
 return Physician
