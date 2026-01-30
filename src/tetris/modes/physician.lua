@@ -24,7 +24,7 @@ PhysicianRuleset.next_sounds = {
 PhysicianRuleset.block_offsets = {
 	[1] = {
 		{ {x=0, y=0}, {x=1, y=0} },
-        { {x=0, y=-1}, {x=0, y=0} },
+		{ {x=0, y=-1}, {x=0, y=0} },
 		{ {x=1, y=0}, {x=0, y=0} },
 		{ {x=0, y=0}, {x=0, y=-1} },
 	},
@@ -102,18 +102,24 @@ Physician.ruleset_override = true
 
 local colors = {"R", "Y", "B"}
 local nextSounds = {
-    R = {R = "I", Y = "L", B = "S"},
-    Y = {R = "L", Y = "O", B = "Z"},
-    B = {R = "S", Y = "Z", B = "J"},
+	R = {R = "I", Y = "L", B = "S"},
+	Y = {R = "L", Y = "O", B = "Z"},
+	B = {R = "S", Y = "Z", B = "J"},
+}
+
+local checkPositions = {
+	{x = -2, y = 0}, {x = 2, y = 0}, {x = 0, y = -2}, {x = 0, y = 2}
 }
 
 function Physician:new()
-    Physician.super:new()
+	Physician.super:new()
 	self._ruleset = PhysicianRuleset()
 	
 	self.level = 10
 	
-    self.grid = PhysicianGrid(8, 16+4)
+	self.ready_frames = 0
+	
+	self.grid = PhysicianGrid(8, 16+4)
 	self.classic_lock = true
 	self.enable_hard_drop = false
 	
@@ -122,7 +128,7 @@ function Physician:new()
 	local max_gem_height
 	
 	if self.level >= 19 then
-	    max_gem_height = 13
+		max_gem_height = 13
 	elseif self.level >= 17 then
 		max_gem_height = 12
 	elseif self.level >= 15 then
@@ -144,15 +150,40 @@ function Physician:new()
 end
 
 function Physician:generateMap()
-	local color = colors[self.mapgen_remain % 3] or colors[love.math.random(1, 3)]
+	while self.mapgen_remain > 0 do
+		local r = love.math.random(1, #self.gen_positions)
+		local p = self.gen_positions[r]
+		self.gen_positions[r], self.gen_positions[#self.gen_positions] = self.gen_positions[#self.gen_positions], nil
+		
+		local colorIdx = self.mapgen_remain % 4
+		
+		if colorIdx == 0 then
+			colorIdx = love.math.random(1, 3)
+		end
+		
+		local valid = {R = true, Y = true, B = true}
+		
+		self.mapgen_remain = self.mapgen_remain - 1
+		
+		for _, checkPos in pairs(checkPositions) do
+			valid[
+				self.grid:getCell(p.x + checkPos.x, p.y + checkPos.y).colour
+			] = nil
+		end
+		
+		for i = 1, 3 do
+			if valid[colors[colorIdx]] then
+				self.grid:setCell(p.x, p.y, {skin = "V", colour = colors[colorIdx]})
+				break
+			else
+				colorIdx = (colorIdx % 3) + 1
+			end
+		end
+	end
 	
-	local r = love.math.random(1, #self.gen_positions)
-	local p = self.gen_positions[r]
-	self.gen_positions[r], self.gen_positions[#self.gen_positions] = self.gen_positions[#self.gen_positions], nil
-	
-	self.grid:setCell(p.x, p.y, {skin = "V", colour = color})
-	
-	self.mapgen_remain = self.mapgen_remain - 1
+	if self.mapgen_remain <= 0 then
+		self.ready_frames = 100
+	end
 end
 
 function Physician:getBackground()
@@ -196,7 +227,8 @@ function Physician:advanceOneFrame(inputs, ruleset)
 	
 	if self.mapgen_remain > 0 then
 		self:generateMap()
-		return true
+		
+		return false
 	end
 	
 	self.super.advanceOneFrame(self, inputs, self._ruleset)
@@ -221,7 +253,7 @@ function Physician:drawNextQueue(ruleset)
 		for index, offset in pairs(offsets) do
 			local x = offset.x + ruleset:getDrawOffset(piece, rotation).x + ruleset.spawn_positions[piece].x
 			local y = offset.y + ruleset:getDrawOffset(piece, rotation).y + 4.7
-            local colour = colors[index] or "R"
+			local colour = colors[index] or "R"
 			love.graphics.draw(blocks[skin][colour], pos_x+x*16, pos_y+y*16)
 		end
 	end
@@ -230,7 +262,7 @@ function Physician:drawNextQueue(ruleset)
 		local next_piece = self.next_queue[i].shape
 		local skin = self.next_queue[i].skin
 		local rotation = self.next_queue[i].orientation
-        local colors = self.next_queue[i].colors
+		local colors = self.next_queue[i].colors
 		if config.side_next then -- next at side
 			drawPiece(next_piece, skin, ruleset.block_offsets[next_piece][rotation], 192, -16+i*48, colors)
 		else -- next at top
